@@ -35,7 +35,7 @@ apt-get update -y
 apt-get install -y libzbar0 libgl1 # needed for reading QR-codes
 wget -q https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-amd64-static.tar.xz
 tar xf ffmpeg-git-amd64-static.tar.xz
-mv ffmpeg-git-*-amd64-static/ffmpeg ffmpeg-git-*-amd64-static/ffprobe /usr/local/bin/
+mv ffmpeg-git-*-amd64-static/ffmpeg ffmpeg-git-*-amd64-static/ffprobe /usr/bin/
 ```
 
 It is recommended to create a new virtual or conda environment dedicated to the project. Use the following command to install the required python packages via pip.

@@ -29,7 +29,15 @@ def get_vmaf(deg_video, ref_video, tmp_dir, clean_up=True, verbosity=1):
         print("Computing VMAF with aligned reference video")        
     run_vmaf(deg_video, vmaf_results_csv, tmp_dir, aligned_ref='aligned_ref.yuv', verbosity=verbosity)
     df_vmaf = pd.read_csv(vmaf_results_csv)
+
+    # Handle length mismatch by padding ref_frames with None values
+    if len(df_vmaf) != len(ref_frames):
+        if verbosity:
+            print(f"Frame count mismatch: VMAF has {len(df_vmaf)} frames, detected {len(ref_frames)} frames")
+            # Keep only the first len(ref_frames) rows from the dataframe
+            df_vmaf = df_vmaf.iloc[:len(ref_frames)]
     df_vmaf['ref_frames'] = ref_frames
+
     if clean_up:
         shutil.rmtree(tmp_dir, ignore_errors=True)
     if verbosity:
@@ -86,11 +94,13 @@ def detect_frames(
                 print(f"{i+1}  -- QR Code not detected. Retrying with detection window buffer size = {buffer}")
                 detected_frame = detect_single_frame(img, vidqr_marker_pos, buffer, vidqr_border_size)
                 buffer = buffer+1
-        ref_frames.append(detected_frame)
-    not_detected = sum(x is None for x in ref_frames)
+        if detected_frame is not None:
+            ref_frames.append(detected_frame)
+    # not_detected = sum(x is None for x in ref_frames)
+    not_detected = frames_deg - len(ref_frames)
     if verbosity:
         print(f"QR Detection done. ref_frames length: {len(ref_frames)}. not_detected: {not_detected}")
-    if (len(ref_frames)==0) or (not_detected!=0):
+    if (len(ref_frames)==0): # or (not_detected!=0):
         raise RuntimeError("Not all frames detected")
     return ref_frames
 

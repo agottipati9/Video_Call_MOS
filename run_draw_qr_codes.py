@@ -6,8 +6,11 @@ from vcm.qr_drawing import draw_qr, check_qr_codes
 # Input arguments ---------------------------------
 
 # Input/output
-src_videos_dir = "/root/data/video_call_mos_set/ref_original"
-output_dir = "/root/data/video_call_mos_set/ref_qr"
+src_videos_dir = "/mydata/sample_media/ref"
+output_dir = "/mydata/sample_media/out"
+res_output = '1920x1080' # resolution of output video
+# Input video requiremnts
+res_input = [1920, 1080]
 
 # QR code options
 n_markers = 2 # number of QR code boxes in each frame
@@ -18,10 +21,7 @@ err = 'h' # QR code error correction
 
 # Quality of output video
 crf = 17 # constant rate factor - sets the bitrate for h264
-res_output = '1920x1080' # resolution of output video
 
-# Input video requiremnts
-res_input = [1920, 1080]
 
 # create videos with QR codes -------------------------------------------
 src_videos = glob.glob(os.path.join(src_videos_dir, "*.mp4"))
