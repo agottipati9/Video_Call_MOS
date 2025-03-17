@@ -174,3 +174,59 @@ def run_process(cmd_args, verbosity=1):
     if status.returncode != 0:
         raise RuntimeError(status.stderr)
     return status.returncode
+
+
+
+
+def identify_dropped_frames(df_results):
+    """
+    Identify dropped frames by looking for gaps in the reference frame sequence.
+    Returns a complete dataframe with all expected frames, marking dropped frames.
+    
+    Args:
+        df_results: DataFrame with 'ref_frames' column containing detected frame numbers
+    
+    Returns:
+        DataFrame with all frames including dropped ones marked with is_dropped=True
+    """
+    # Extract the reference frame numbers
+    ref_frames = df_results['ref_frames'].tolist()
+    
+    # Get min and max frame numbers to determine expected range
+    min_frame = min(ref_frames)
+    min_frame = min(1, min_frame)  # Ensure min frame is at least 1 (based on previous test runs)
+    max_frame = max(ref_frames)
+    max_frame = max(1803, max_frame)  # Ensure max frame is at least 1803 (based on previous test runs)
+    
+    # Create a set of detected frame numbers for faster lookup
+    detected_frames_set = set(ref_frames)
+    
+    # Create a list of all expected frame numbers
+    expected_frames = list(range(min_frame, max_frame + 1))
+    
+    # Create a list to track which frames were dropped
+    is_dropped = [frame not in detected_frames_set for frame in expected_frames]
+    
+    # Create a complete dataframe with all expected frames
+    complete_df = pd.DataFrame({
+        'ref_frames': expected_frames,
+        'is_dropped': is_dropped
+    })
+    
+    # Merge with original results to get all metrics for detected frames
+    # Use left join to keep all expected frames
+    merged_df = pd.merge(
+        complete_df, 
+        df_results, 
+        on='ref_frames', 
+        how='left'
+    )
+    
+    # Fill NaN values for metrics in dropped frames
+    # This will be used later to assign MOS scores
+    for col in df_results.columns:
+        if col != 'ref_frames':
+            if col in merged_df.columns:
+                merged_df[col] = merged_df[col].fillna(0)
+    
+    return merged_df
