@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from vcm.vmaf_and_qr_code_alignment import get_vmaf
+from vcm.vmaf_and_qr_code_alignment import get_vmaf, identify_dropped_frames
 
 class VcmNet(nn.Module):
     def __init__(
@@ -75,8 +75,18 @@ class VideoCallMosModel():
         # run reference alignment via QR-code detection and compute VMAF
         df_results = get_vmaf(deg_video, ref_video, tmp_dir, verbosity=verbosity)
 
+        # Identify dropped frames
+        complete_df = identify_dropped_frames(df_results)
+        
+        # Create a mask for non-dropped frames to compute their MOS normally
+        non_dropped_mask = ~complete_df['is_dropped']
+        df_for_mos = complete_df[non_dropped_mask].copy()
+        
+        # Run Video Call MOS LSTM based on VMAF features and alignment indices for non-dropped frames
+        x, _ = get_features(df_for_mos, self.model.features)        
+
         # run Video Call MOS LSTM based on VMAF features and alignment indices
-        x = get_features(df_results, self.model.features)[0]
+        # x = get_features(df_results, self.model.features)[0]
         x = torch.tensor(x, dtype=torch.float).unsqueeze(0).to(self.dev)
         with torch.no_grad():
             mos, mos_frame = self.model(x)
@@ -84,10 +94,17 @@ class VideoCallMosModel():
         mos_frame = mos_frame[0].cpu().numpy()
 
         # save results to CSV
-        df_results['video_call_mos'] = mos_frame
+        # Initialize video_call_mos column with 1.0 (for dropped frames)
+        complete_df['video_call_mos'] = 1.0
+        
+        # Assign calculated MOS scores to non-dropped frames
+        complete_df.loc[non_dropped_mask, 'video_call_mos'] = mos_frame
+        # df_results['video_call_mos'] = mos_frame
         results_csv = os.path.join(results_dir, os.path.basename(deg_video).split('.')[0]+'.csv')
-        df_results.to_csv(results_csv, index=False)
+        # df_results.to_csv(results_csv, index=False)
+        complete_df.to_csv(results_csv, index=False)
+        complete_mos = complete_df['video_call_mos'].mean()
 
         if verbosity:
             print(f"Video Call MOS computation done. Results saved at {results_csv}")            
-        return mos, results_csv
+        return complete_mos, results_csv
